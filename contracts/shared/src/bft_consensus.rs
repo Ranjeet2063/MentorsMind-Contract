@@ -1,6 +1,6 @@
 #![no_std]
 
-use soroban_sdk::{contracterror, contracttype, BytesN, Env, Symbol, Vec};
+use soroban_sdk::{contracterror, contracttype, Address, BytesN, Env, Symbol, Vec};
 
 use crate::vrf::{EpochInfo, VrfOutput};
 
@@ -39,7 +39,7 @@ pub struct ConsensusRound {
     /// Block/proposal hash being proposed
     pub block_hash: BytesN<32>,
     /// Address of the proposer for this round
-    pub proposer: soroban_sdk::Address,
+    pub proposer: Address,
     /// Epoch this round belongs to
     pub epoch: u64,
     /// Timestamp when round started
@@ -63,7 +63,7 @@ pub struct QuorumCertificate {
     /// Round number
     pub round: u64,
     /// Addresses of validators who signed
-    pub signers: Vec<soroban_sdk::Address>,
+    pub signers: Vec<Address>,
     /// Number of signatures (must >= quorum)
     pub signature_count: u32,
     /// Quorum threshold that was met
@@ -79,7 +79,7 @@ pub struct ViewChange {
     /// New view/round number
     pub new_view: u64,
     /// Address of the validator requesting view change
-    pub validator: soroban_sdk::Address,
+    pub validator: Address,
     /// Last finalized block hash known to this validator
     pub last_block_hash: BytesN<32>,
     /// Timestamp of view change request
@@ -163,7 +163,7 @@ pub fn start_round(
     env: &Env,
     round: u64,
     block_hash: BytesN<32>,
-    proposer: soroban_sdk::Address,
+    proposer: Address,
     epoch: u64,
     quorum_threshold: u32,
 ) -> ConsensusRound {
@@ -186,7 +186,7 @@ pub fn start_round(
 pub fn cast_prepare(
     env: &Env,
     round: &mut ConsensusRound,
-    voter: &soroban_sdk::Address,
+    voter: &Address,
     block_hash: &BytesN<32>,
 ) -> Result<(), ConsensusError> {
     if round.phase != ConsensusPhase::PrePrepare {
@@ -214,7 +214,7 @@ pub fn cast_prepare(
 pub fn cast_commit(
     env: &Env,
     round: &mut ConsensusRound,
-    voter: &soroban_sdk::Address,
+    voter: &Address,
     block_hash: &BytesN<32>,
 ) -> Result<(), ConsensusError> {
     if round.phase != ConsensusPhase::Prepare {
@@ -242,7 +242,7 @@ pub fn cast_commit(
 pub fn finalize_round(
     env: &Env,
     round: &mut ConsensusRound,
-    signers: Vec<soroban_sdk::Address>,
+    signers: Vec<Address>,
 ) -> Result<QuorumCertificate, ConsensusError> {
     if round.phase != ConsensusPhase::Commit {
         return Err(ConsensusError::InvalidPhase);
@@ -302,7 +302,7 @@ pub fn verify_quorum_certificate(
 }
 
 /// Count unique signers in a certificate.
-fn count_unique_signers(signers: &Vec<soroban_sdk::Address>) -> u32 {
+fn count_unique_signers(signers: &Vec<Address>) -> u32 {
     let mut count = 0;
     for i in 0..signers.len() {
         let signer = signers.get(i).unwrap();
@@ -328,7 +328,7 @@ fn count_unique_signers(signers: &Vec<soroban_sdk::Address>) -> u32 {
 pub fn create_view_change(
     env: &Env,
     new_view: u64,
-    validator: soroban_sdk::Address,
+    validator: Address,
     last_block_hash: BytesN<32>,
     reason: ViewChangeReason,
 ) -> ViewChange {
@@ -358,9 +358,9 @@ pub fn has_view_change_quorum(view_change_count: u32, validator_count: u32) -> b
 /// where validators are sorted by VRF output (already sorted from
 /// `select_validators_for_epoch`).
 pub fn select_proposer(
-    validators: &Vec<soroban_sdk::Address>,
+    validators: &Vec<Address>,
     round: u64,
-) -> Option<soroban_sdk::Address> {
+) -> Option<Address> {
     if validators.is_empty() {
         return None;
     }
@@ -370,9 +370,9 @@ pub fn select_proposer(
 
 /// Verify that a given address is the expected proposer for a round.
 pub fn is_valid_proposer(
-    validators: &Vec<soroban_sdk::Address>,
+    validators: &Vec<Address>,
     round: u64,
-    proposer: &soroban_sdk::Address,
+    proposer: &Address,
 ) -> bool {
     match select_proposer(validators, round) {
         Some(expected) => expected == *proposer,
@@ -385,7 +385,6 @@ pub fn is_valid_proposer(
 // ---------------------------------------------------------------------------
 
 /// Full consensus state for the protocol.
-#[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ConsensusState {
     /// Current epoch
@@ -422,7 +421,7 @@ pub fn start_new_round(
     state: &mut ConsensusState,
     env: &Env,
     block_hash: BytesN<32>,
-    proposer: soroban_sdk::Address,
+    proposer: Address,
     quorum_threshold: u32,
 ) {
     state.current_round = state.current_round.saturating_add(1);
